@@ -11,6 +11,20 @@ function combine_callbacks(callback_list)
     return combined_callback
 end
 
+# Integrate callbacks combiner function
+function combine_integrate_callbacks(callback_list)
+    function combined_callback(; solution, loss, model, data, rule)
+        callback_outputs = []
+        for cb in callback_list
+            output = cb(; solution=solution, loss=loss, 
+                model=model, data=data, rule=rule)
+            push!(outputs, output)
+        end
+        return callback_outputs
+    end
+    return combined_callback
+end
+
 # Accuracy function
 function accuracy(model, tdata)
     x_test, y_test = tdata
@@ -29,7 +43,7 @@ function cb_multidataset_loss(; loss, model, data, rule, datasets)
     end
     dataset_losses = []
     for dataset in datasets
-        current_loss = loss(model, dataset...)
+        current_loss = loss(model(dataset[1]), dataset[2])
         push!(dataset_losses, current_loss)
     end
     return dataset_losses
@@ -118,4 +132,9 @@ function cb_plane_projection(; loss, model, data, rule, basis)
     param_vec, _ = destructure(model)
     s, t = real(dot(param_vec, e1)), real(dot(param_vec, e2))
     return (s, t)
+end
+
+# Solution trajectory
+function icb_trajectory(; solution, loss, model, data, rule)
+    return (u = solution.u, t = solution.t)
 end

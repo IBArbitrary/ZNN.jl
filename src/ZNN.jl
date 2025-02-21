@@ -37,14 +37,20 @@ export gen_adjust!,
     train_symplectic_euler!,
     train_rk4!
 
+include("optimise/integrate.jl")
+export model_derivative,
+    integrate!
+
 include("analysis/callbacks.jl")
 export accuracy,
+    combine_callbacks
     cb_multidataset_loss,
     cb_covariance,
     cb_param_vector,
     cb_grad_vector,
     cb_test_accuracy,
-    combine_callbacks
+    combine_integrate_callbacks,
+    icb_trajectory
 
 include("data_generators.jl")
 export GenerateLineData,

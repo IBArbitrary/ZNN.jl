@@ -88,16 +88,24 @@ struct PhaseOutput
     cbout::Dict{Symbol,Vector{Any}}
 end
 
+struct RunOutput
+    loss::Vector{Vector{Float64}}
+    cbout::NamedTuple{(:beforecb, :aftercb), Tuple{Vector{Vector{Any}}, Vector{Vector{Any}}}}
+end
+
 function run!(
     pipeline::TrainingPipeline, loss, model, data;
     before_step_cb=nothing, after_step_cb=nothing
 )
-    output_history = Vector{PhaseOutput}()
+    all_phase_losses = Vector{Vector{Float64}}()
+    all_phase_cb_before = Vector{Vector{Any}}()
+    all_phase_cb_after = Vector{Vector{Any}}()
+    
     for phase_idx in 1:length(pipeline.phases)
         phase_loss_history = Vector{Float64}()
         phase_cb_outputs = Dict{Symbol,Vector{Any}}(
-            :beforecb => [],
-            :aftercb => []
+            :beforecb => Any[],
+            :aftercb  => Any[]
         )
         phase = pipeline.phases[phase_idx]
         for epoch in 1:phase.epochs
@@ -106,32 +114,30 @@ function run!(
                 loss,
                 model,
                 current_data,
-                phase.rule,
-                ; before_step_cb=before_step_cb,
+                phase.rule;
+                before_step_cb=before_step_cb,
                 after_step_cb=after_step_cb,
                 phase.update_kwargs...
             )
             push!(phase_loss_history, loss_value)
             if haskey(callback_outputs, "before_step_output")
-                push!(phase_cb_outputs[:beforecb],
-                    callback_outputs["before_step_output"])
+                push!(phase_cb_outputs[:beforecb], callback_outputs["before_step_output"])
             else
                 push!(phase_cb_outputs[:beforecb], nothing)
             end
             if haskey(callback_outputs, "after_step_output")
-                push!(phase_cb_outputs[:aftercb],
-                    callback_outputs["after_step_output"])
+                push!(phase_cb_outputs[:aftercb], callback_outputs["after_step_output"])
             else
                 push!(phase_cb_outputs[:aftercb], nothing)
             end
-            println(
-                "P: $(phase_idx); E: $epoch; L [$(phase.data_index)]: $loss_value"
-            )
+            println("P: $(phase_idx); E: $epoch; L [$(phase.data_index)]: $loss_value")
         end
-        phase_output = PhaseOutput(phase_loss_history, phase_cb_outputs)
-        push!(output_history, phase_output)
+        push!(all_phase_losses, phase_loss_history)
+        push!(all_phase_cb_before, phase_cb_outputs[:beforecb])
+        push!(all_phase_cb_after, phase_cb_outputs[:aftercb])
     end
-    return output_history
+    
+    return RunOutput(all_phase_losses, (beforecb=all_phase_cb_before, aftercb=all_phase_cb_after))
 end
 
 function with_callbacks(train_step_fn)
@@ -154,7 +160,7 @@ function with_callbacks(train_step_fn)
 
         if after_step_cb !== nothing
             after_step_output = after_step_cb(
-                ; loss_value=l, loss=loss, model=model, data=data, rule=rule
+                ;loss=loss, model=model, data=data, rule=rule
             )
             if !isnothing(after_step_output)
                 callback_outputs["after_step_output"] = after_step_output
