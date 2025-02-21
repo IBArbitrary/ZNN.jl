@@ -18,7 +18,11 @@ export complex_to_real_dense, complex_to_real_chain,
 
 include("utils.jl")
 export complex_glorot_uniform,
-    complex_aug_glorot_uniform
+    complex_aug_glorot_uniform,
+    are_linearly_independent,
+    gram_schmidt,
+    principal_components,
+    filter_classifier_data
 
 include("activations.jl")
 for f in ACTIVATIONS

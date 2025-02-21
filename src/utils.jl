@@ -242,3 +242,28 @@ function principal_components(vectors::Vector{<:AbstractVector}, N::Int)
     stds = S[1:N]
     return (stds .^ 2, [pcs[:, i] for i in 1:N])
 end
+
+"""
+    filter_classifier_data(condition, x, y, yr)
+
+Filters classifier data based on a condition applied to the response variable.
+
+# Arguments
+
+*   `condition`: A function that takes an element of `yr` and returns `true` if the corresponding data point should be kept, `false` otherwise.
+*   `x`: The feature matrix (data points in columns).
+*   `y`: The target variable (corresponding to columns of `x`).
+*   `yr`: The response variable used for filtering.
+
+# Returns
+
+A tuple `(x_, y_)` containing the filtered feature matrix and target variable.
+"""
+function filter_classifier_data(condition::Function, x, y, yr)
+    LEN = length(yr)
+    indices = filter(i -> condition(yr[i]), 1:LEN)
+    println(indices)
+    x_ = x[:, indices]
+    y_ = y[:, indices]
+    return (x_, y_)
+end
