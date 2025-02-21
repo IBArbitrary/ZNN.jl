@@ -5,6 +5,11 @@ struct IntegrationOutput{T, C}
     cbout::C
 end
 
+struct IntegrationHistory{L, C}
+    loss::Vector{L}
+    cbout::Vector{C}
+end
+
 function model_derivative(u, model, loss, data, rule, t)
     _, re = destructure(model)
     model = re(u)
@@ -22,13 +27,15 @@ function loss_u(u, model, loss, data)
     return loss(model(data[1]), data[2])
 end
 
-function integrate!(pipeline::TrainingPipeline, loss, model, data;
-    alg=Tsit5(), cb=icb_trajectory, kwargs...)
-    output_history = Vector{IntegrationOutput}()
+function integrate!(
+    pipeline::TrainingPipeline, loss, model, data;
+    alg=Tsit5(), rtol=1e-5, atol=1e-5, progress=true,
+    cb=ZNN.icb_trajectory
+)
+    phase_outputs = Vector{IntegrationOutput}()
     t_cumulative = 0.0
     for phase_idx in 1:length(pipeline.phases)
         phase_losses = Vector{Float64}()
-        phase_cb_outputs = Vector{Any}()
         phase = pipeline.phases[phase_idx]
         rule = phase.rule
         current_data = data[phase.data_index]
@@ -36,23 +43,24 @@ function integrate!(pipeline::TrainingPipeline, loss, model, data;
         t_cumulative += phase.epochs
         u0, re = destructure(model)
         function model_derivative_current(u, p, t)
-            model, loss, data, rule = p
-            return model_derivative(u, model, loss, data, rule, t)
+            return model_derivative(u, model, loss, current_data, rule, t)
         end
         loss_u_current(u) = loss_u(u, model, loss, current_data)
-        prob = ODEProblem(model_derivative_current, u0, tspan,
-            (model, loss, current_data, rule))
-        sol = solve(prob, alg; kwargs...)
-        current_loss = loss_u_current(sol.u[end])
-        push!(phase_losses, current_loss)
-        cb_output = cb(; solution=sol, loss=current_loss,
+        prob = ODEProblem(model_derivative_current, u0, tspan)
+        sol = solve(prob, alg, reltol=rtol, abstol=atol, progress=progress)
+        for u_ in sol.u
+            push!(phase_losses, loss_u_current(u_))
+        end
+        cb_output = cb(; solution=sol, loss=loss,
             model=re(sol.u[end]), data=current_data, rule=rule)
-        push!(phase_cb_outputs, cb_output)
-        push!(output_history, IntegrationOutput(phase_losses, phase_cb_outputs))
+        push!(phase_outputs, IntegrationOutput(phase_losses, cb_output))
+        current_loss = loss_u_current(sol.u[end])
         println("P: $(phase_idx); L [$(phase.data_index)]: $current_loss; tspan: $tspan")
         model = re(sol.u[end])
     end
-    return output_history
+    all_losses = [p.loss for p in phase_outputs]
+    all_cbouts = [p.cbout for p in phase_outputs]
+    return IntegrationHistory(all_losses, all_cbouts)
 end
 
 function my_callback(; loss, model, data, rule, u, t)
