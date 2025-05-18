@@ -109,8 +109,6 @@ complex_aug_glorot_uniform(
 )
 ChainRulesCore.@non_differentiable complex_aug_glorot_uniform(::Any...)
 
-using LinearAlgebra
-
 """
     are_linearly_independent(vectors; tolerance = 1e-8) -> Bool
 
@@ -262,8 +260,17 @@ A tuple `(x_, y_)` containing the filtered feature matrix and target variable.
 function filter_classifier_data(condition::Function, x, y, yr)
     LEN = length(yr)
     indices = filter(i -> condition(yr[i]), 1:LEN)
-    println(indices)
-    x_ = x[:, indices]
+    x_ = selectdim(x, ndims(x), indices)
     y_ = y[:, indices]
     return (x_, y_)
+end
+
+function jacobi(f, x)
+    y, back = Zygote.pullback(f, x)
+    back(1)[1], back(im)[1]
+end
+  
+function wirtinger(f, x)
+    du, dv = jacobi(f, x)
+    (du' + im*dv')/2, (du + im*dv)/2
 end

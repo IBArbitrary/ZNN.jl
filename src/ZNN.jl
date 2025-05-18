@@ -3,18 +3,27 @@ module ZNN
 using Random,
     Optimisers,
     Flux,
-    ChainRulesCore
+    Zygote,
+    DifferentialEquations,
+    ChainRulesCore,
+    NNlib
 using Optimisers: @lazy, destructure, ofeltype
-using Flux: relu, sigmoid, softmax
+using Flux: relu, sigmoid, softmax, elu, hardsigmoid, leakyrelu, selu, softplus, softsign
 using LinearAlgebra: norm, rank, svd
-using Statistics: mean
+using StatsBase: mean
 
 include("layers/basic.jl")
 export ComplexDense
 
+include("layers/conv.jl")
+export ComplexConv, ScalarMaxPool, LpNormPool
+
 include("layers/conversion.jl")
 export complex_to_real_dense, complex_to_real_chain,
     real_to_complex_dense, real_to_complex_chain
+
+include("layers/pooling.jl")
+export scalarmaxpool, scalarlpnormpool
 
 include("utils.jl")
 export complex_glorot_uniform,
@@ -28,6 +37,9 @@ include("activations.jl")
 for f in ACTIVATIONS
     @eval export $(f)
 end
+
+include("optimise/decouple.jl")
+export decouple
 
 include("optimise/rules.jl")
 export GenDescent
@@ -47,14 +59,18 @@ export model_derivative,
 
 include("analysis/callbacks.jl")
 export accuracy,
-    combine_callbacks
+    combine_callbacks,
     cb_multidataset_loss,
     cb_covariance,
     cb_param_vector,
     cb_grad_vector,
     cb_test_accuracy,
     combine_integrate_callbacks,
-    icb_trajectory
+    icb_trajectory,
+    icb_multidataset_loss,
+    icb_param_vector,
+    icb_grad_vector,
+    icb_test_accuracy
 
 include("data_generators.jl")
 export GenerateLineData,

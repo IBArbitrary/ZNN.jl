@@ -16,9 +16,10 @@ function combine_integrate_callbacks(callback_list)
     function combined_callback(; solution, loss, model, data, rule)
         callback_outputs = []
         for cb in callback_list
-            output = cb(; solution=solution, loss=loss, 
-                model=model, data=data, rule=rule)
-            push!(outputs, output)
+            output = cb(; solution=solution, loss=loss,
+                model=model, data=data, rule=rule
+            )
+            push!(callback_outputs, output)
         end
         return callback_outputs
     end
@@ -29,9 +30,9 @@ end
 function accuracy(model, tdata)
     x_test, y_test = tdata
     y_pred = model(x_test)
-    N_classes = size(y_test[1], 1)
-    y_pred_class = onecold(y_pred, 1:N_classes)
-    y_true_class = onecold(y_test, 1:N_classes)
+    N_classes = size(y_test, 1)
+    y_pred_class = Flux.onecold(y_pred, 1:N_classes)
+    y_true_class = Flux.onecold(y_test, 1:N_classes)
     return mean(y_pred_class .== y_true_class) * 100
 end
 
@@ -85,8 +86,8 @@ end
 
 
 # Parameter Vector/Norm Callback
-function cb_param_vector(; loss, model, data, rule, get_norm=true)
-    param_vec, re = Flux.destructure(model)
+function cb_param_vector(; loss, model, data, rule, get_norm=false)
+    param_vec, _ = destructure(model)
     if get_norm
         param_norm = norm(param_vec)
         return param_norm
@@ -97,11 +98,11 @@ end
 
 
 # Gradient Vector/Norm Callback
-function cb_grad_vector(; loss, model, data, rule, get_norm=true)
-    x, y = data
-    params = Flux.params(model)
-    grads = Zygote.gradient(() -> loss(model, x, y), params)
-    grad_vec, _ = Flux.destructure(grads)
+function cb_grad_vector(; loss, model, data, rule, get_norm=false)
+    (grads, _...) = Flux.gradient(model, data) do m, d
+        loss(m(d[1]), d[2])
+    end
+    grad_vec, _ = destructure(grads)
     if get_norm
         grad_norm = norm(grad_vec)
         return grad_norm
@@ -137,4 +138,73 @@ end
 # Solution trajectory
 function icb_trajectory(; solution, loss, model, data, rule)
     return (u = solution.u, t = solution.t)
+end
+
+# Multi-dataset Loss Callback for integration - Returns list of losses
+function icb_multidataset_loss(; solution, loss, model, data, rule, datasets)
+    if isempty(datasets)
+        @warn "No datasets provided for icb_multidataset_loss callback."
+        return []
+    end
+    dataset_losses = []
+    u = solution.u
+    _, re = destructure(model)
+    for d in datasets
+        losses = []
+        for vec ∈ u
+            m = re(vec)
+            push!(
+                losses,
+                loss(m(d[1]), d[2])
+            )
+        end
+        push!(dataset_losses, losses)
+    end
+    return dataset_losses
+end
+
+# Parameter Vector/Norm Callback for integration
+function icb_param_vector(; solution, loss, model, data, rule, get_norm=false)
+    param_vecs = solution.u
+    if get_norm
+        param_norms = norm.(param_vecs)
+        return param_norms
+    else
+        return param_vecs
+    end
+end
+
+
+# Gradient Vector/Norm Callback for integration
+function icb_grad_vector(; solution, loss, model, data, rule, get_norm=false)
+    vecs = solution.u
+    grad_out = []
+    for u ∈ vecs
+        (grads, _...) = Flux.gradient(model, data) do m, d
+            loss(m(d[1]), d[2])
+        end
+        grad_vec, _ = destructure(grads)
+        if get_norm
+            push!(grad_out, norm(grad_vec))
+        else
+            push!(grad_out, grad_vec)
+        end
+    end
+    return grad_out
+end
+
+# Model Accuracy Callback for integration
+function icb_test_accuracy(; solution, loss, model, data, rule, test_data)
+    if isnothing(test_data)
+        @warn "No test_data provided for icb_test_accuracy callback."
+        return
+    end
+    vecs = solution.u
+    _, re = destructure(model)
+    test_accuracy = []
+    for u ∈ vecs
+        model = re(u)
+        push!(test_accuracy, accuracy(model, test_data))
+    end
+    return test_accuracy
 end

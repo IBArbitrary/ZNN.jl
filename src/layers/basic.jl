@@ -47,13 +47,13 @@ struct ComplexDense{F,M<:AbstractMatrix,B}
     σ::F
 
     function ComplexDense(W::AbstractMatrix, bias=true, σ=identity)
-        W_complex = Complex{Float32}.(W)
+        W_complex = Complex{real(eltype(W))}.(W)
         b = if bias === true
-            zeros(Complex{Float32}, size(W, 1))
+            zeros(Complex{real(eltype(W))}, size(W, 1))
         elseif bias === false
             false
         else
-            Complex{Float32}.(bias)
+            Complex{real(eltype(bias))}.(bias)
         end
 
         new{typeof(σ),typeof(W_complex),typeof(b)}(W_complex, b, σ)
