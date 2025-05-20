@@ -100,7 +100,7 @@ function run!(
     all_phase_losses = Vector{Vector{Float64}}()
     all_phase_cb_before = Vector{Vector{Any}}()
     all_phase_cb_after = Vector{Vector{Any}}()
-    
+
     for phase_idx in 1:length(pipeline.phases)
         phase_loss_history = Vector{Float64}()
         phase_cb_outputs = Dict{Symbol,Vector{Any}}(
@@ -130,13 +130,13 @@ function run!(
             else
                 push!(phase_cb_outputs[:aftercb], nothing)
             end
-            println("P: $(phase_idx); E: $epoch; L [$(phase.data_index)]: $loss_value")
+            println("P: $(phase_idx); E: $epoch/$(phase.epochs); L [$(phase.data_index)]: $loss_value")
         end
         push!(all_phase_losses, phase_loss_history)
         push!(all_phase_cb_before, phase_cb_outputs[:beforecb])
         push!(all_phase_cb_after, phase_cb_outputs[:aftercb])
     end
-    
+
     return RunOutput(all_phase_losses, (beforecb=all_phase_cb_before, aftercb=all_phase_cb_after))
 end
 
