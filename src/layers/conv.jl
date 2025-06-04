@@ -40,7 +40,7 @@ conv_dims(c::ComplexConv, x::AbstractArray) =
 ChainRulesCore.@non_differentiable conv_dims(::Any, ::Any)
 
 function (c::ComplexConv)(x::AbstractArray)
-    _conv_size_check(c, x)
+    Flux._conv_size_check(c, x)
     cdims = conv_dims(c, x)
     xT = Flux._match_eltype(c, x)
     NNlib.bias_act!(
@@ -55,6 +55,36 @@ function Base.show(io::IO, l::ComplexConv)
     print(io, "ComplexConv(", size(l.weight)[1:ndims(l.weight)-2])
     print(io, ", ", _channels_in(l), " => ", _channels_out(l))
     Flux._print_conv_opt(io, l)
+    print(io, ")")
+end
+
+################################################################################
+
+struct ComplexMeanPool{N,M}
+    k::NTuple{N,Int}
+    pad::NTuple{M,Int}
+    stride::NTuple{N,Int}
+end
+
+function ComplexMeanPool(k::NTuple{N,Integer}; pad = 0, stride = k) where N
+    stride = expand(Val(N), stride)
+    pad = Flux.calc_padding(MeanPool, pad, k, 1, stride)
+    return ComplexMeanPool(k, pad, stride)
+end
+
+function (m::ComplexMeanPool)(x)
+    T = eltype(x)
+    T_complex = T <: Real ? Complex{T} : T
+    x_complex = T_complex.(x)
+    Flux._pool_size_check(m, m.k, x_complex)
+    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    return meanpool(x_complex, pdims)
+end
+
+function Base.show(io::IO, m::ComplexMeanPool)
+    print(io, "ComplexMeanPool(", m.k)
+    all(==(0), m.pad) || print(io, ", pad=", _maybetuple_string(m.pad))
+    m.stride == m.k || print(io, ", stride=", _maybetuple_string(m.stride))
     print(io, ")")
 end
 

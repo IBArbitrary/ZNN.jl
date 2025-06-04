@@ -9,7 +9,7 @@ using NNlib: insert_singleton_spatial_dimension,
 for name in (:scalarmax, :scalarlpnorm)
     @eval function $((Symbol("$(name)pool_direct!")))(
                     y::AbstractArray{<:Any, 5}, x::AbstractArray{<:Any, 5},
-                    pdims::PoolDims; alpha=1, beta=0, kwargs...) 
+                    pdims::PoolDims; alpha=1, beta=0, kwargs...)
         $((Symbol("$(name)pool_direct!")))(
             y, x, pdims,
             Val(kernel_size(pdims)), Val(channels_out(pdims)),
@@ -42,16 +42,16 @@ for name in (:scalarmax, :scalarlpnorm)
         @inline project(idx, stride, pad) = (idx - 1) * stride - pad + 1
 
         # If we're doing mean pooling, we represent division by kernel size by rolling it
-        # into the `alpha` multiplier. 
-        # The type might change here, that's why we prepend the underscore 
+        # into the `alpha` multiplier.
+        # The type might change here, that's why we prepend the underscore
         # (does it make a difference, though?)
         _alpha = T(alpha)
         # _beta = T(beta)
 
         # A quick note on the array element types `T` and `R`:
-        # Ideally, `T == R`, but in some edge-cases, this might not be the case 
+        # Ideally, `T == R`, but in some edge-cases, this might not be the case
         # (e.g. with `ReverseDiff.TrackedArray`, see issue #484).
-        # If the types differ, we will initialize variables (like `_alpha` above) with the 
+        # If the types differ, we will initialize variables (like `_alpha` above) with the
         # target eltype `T`.
 
         p = if $(name != :scalarlpnorm) 0 else

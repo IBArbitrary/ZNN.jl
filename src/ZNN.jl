@@ -17,6 +17,7 @@ export ComplexDense
 
 include("layers/conv.jl")
 export ComplexConv, ScalarMaxPool, LpNormPool
+export ComplexMeanPool
 
 include("layers/conversion.jl")
 export complex_to_real_dense, complex_to_real_chain,
