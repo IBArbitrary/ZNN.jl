@@ -120,17 +120,6 @@ function Base.show(io::IO, m::ScalarMaxPool)
     print(io, ")")
 end
 
-##########################################################################
-
-function _conv_size_check(layer, x::AbstractArray)
-    ndims(x) == ndims(layer.weight) || throw(DimensionMismatch(LazyString("layer ", layer,
-        " expects ndims(input) == ", ndims(layer.weight), ", but got ", summary(x))))
-    d = ndims(x) - 1
-    n = _channels_in(layer)
-    size(x, d) == n || throw(DimensionMismatch(LazyString("layer ", layer,
-        lazy" expects size(input, $d) == $n, but got ", summary(x))))
-end
-
 #########################################################################
 struct LpNormPool{N,M}
     k::NTuple{N,Int}
