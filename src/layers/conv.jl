@@ -1,3 +1,7 @@
+# helper function
+
+################################################################################
+
 struct ComplexConv{N,M,F,A<:AbstractArray,V}
     σ::F
     weight::A
@@ -39,17 +43,26 @@ conv_dims(c::ComplexConv, x::AbstractArray) =
 
 ChainRulesCore.@non_differentiable conv_dims(::Any, ::Any)
 
+_channels_in(l::ComplexConv) = size(l.weight, ndims(l.weight) - 1) * l.groups
+_channels_out(l::ComplexConv) = size(l.weight, ndims(l.weight))
+
+function _conv_size_check(layer, x::AbstractArray)
+    ndims(x) == ndims(layer.weight) || throw(DimensionMismatch(LazyString("layer ", layer,
+      " expects ndims(input) == ", ndims(layer.weight), ", but got ", summary(x))))
+    d = ndims(x)-1
+    n = _channels_in(layer)
+    size(x,d) == n || throw(DimensionMismatch(LazyString("layer ", layer,
+      lazy" expects size(input, $d) == $n, but got ", summary(x))))
+end
+
 function (c::ComplexConv)(x::AbstractArray)
-    Flux._conv_size_check(c, x)
+    _conv_size_check(c, x)
     cdims = conv_dims(c, x)
     xT = Flux._match_eltype(c, x)
     NNlib.bias_act!(
         c.σ, conv(xT, c.weight, cdims), Flux.conv_reshape_bias(c)
     )
 end
-
-_channels_in(l::ComplexConv) = size(l.weight, ndims(l.weight) - 1) * l.groups
-_channels_out(l::ComplexConv) = size(l.weight, ndims(l.weight))
 
 function Base.show(io::IO, l::ComplexConv)
     print(io, "ComplexConv(", size(l.weight)[1:ndims(l.weight)-2])
@@ -89,28 +102,27 @@ function Base.show(io::IO, m::ComplexMeanPool)
 end
 
 
-#####################################################################
+################################################################################
 
-struct ScalarMaxPool{N,M,F,C}
+struct ScalarMaxPool{N,M,F}
     k::NTuple{N,Int}
     pad::NTuple{M,Int}
     stride::NTuple{N,Int}
     f::F # Scalar function f: Complex -> Real
-    fargmin::C
 end
 
-function ScalarMaxPool(
-    k::NTuple{N,Integer}, f::F, fargmin::C; pad=0, stride=k
-) where {N,F,C}
-    stride = Flux.expand(Val(N), stride)
-    pad = Flux.calc_padding(ScalarMaxPool, pad, k, 1, stride)
-    return ScalarMaxPool(k, pad, stride, f, fargmin)
+function ScalarMaxPool(k::NTuple{N,Integer}, f::F; pad=0, stride=k) where {N,F}
+    @assert isa(f, Function) "The argument `f` must be a function, but got $(typeof(f))"
+    stride_ = Flux.expand(Val(N), stride)
+    pad_ = Flux.calc_padding(ScalarMaxPool, pad, k, 1, stride_)
+    return ScalarMaxPool(k, pad_, stride_, f)
 end
+
 
 function (m::ScalarMaxPool)(x)
     Flux._pool_size_check(m, m.k, x)
     pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
-    return scalarmaxpool(x, pdims; f=m.f, fargmin=m.fargmin)
+    return scalarmaxpool(x, pdims; f=m.f)
 end
 
 function Base.show(io::IO, m::ScalarMaxPool)
@@ -120,40 +132,72 @@ function Base.show(io::IO, m::ScalarMaxPool)
     print(io, ")")
 end
 
-#########################################################################
-struct LpNormPool{N,M}
+################################################################################
+
+struct ComplexScalarMaxPool{N,M,F}
     k::NTuple{N,Int}
     pad::NTuple{M,Int}
     stride::NTuple{N,Int}
-    p::Real
+    f::F # Scalar function f: Complex -> Real
 end
 
-function LpNormPool(k::NTuple{N,Integer}; pad=0, stride=k, p::Real=2) where {N}
-    stride = Flux.expand(Val(N), stride)
-    pad = Flux.calc_padding(LpNormPool, pad, k, 1, stride)
-    return LpNormPool(k, pad, stride, p)
+function ComplexScalarMaxPool(k::NTuple{N,Integer}, f::F; pad=0, stride=k) where {N,F}
+    @assert isa(f, Function) "The argument `f` must be a function, but got $(typeof(f))"
+    stride_ = Flux.expand(Val(N), stride)
+    pad_ = Flux.calc_padding(ComplexScalarMaxPool, pad, k, 1, stride_)
+    return ComplexScalarMaxPool(k, pad_, stride_, f)
 end
 
-function (m::LpNormPool)(x)
-    _pool_size_check(m, m.k, x)
-    pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
-    return NNlib.lpnormpool(x, pdims; p=m.p)
+function (m::ComplexScalarMaxPool)(x)
+    T = eltype(x)
+    T_complex = T <: Real ? Complex{T} : T
+    x_complex = T_complex.(x)
+    Flux._pool_size_check(m, m.k, x_complex)
+    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    return scalarmaxpool(x_complex, pdims; f=m.f)
 end
 
-function Base.show(io::IO, m::LpNormPool)
-    print(io, "LpNormPool(", m.k)
-    all(==(0), m.pad) || print(io, ", pad=", Flux._maybetuple_string(m.pad))
-    m.stride == m.k || print(io, ", stride=", Flux._maybetuple_string(m.stride))
-    print(io, ", p=", m.p, ")")
+function Base.show(io::IO, m::ComplexScalarMaxPool)
+    print(io, "ComplexScalarMaxPool(", m.k, ", f=", m.f) # Added f to the print
+    all(==(0), m.pad) || print(io, ", pad=", _maybetuple_string(m.pad))
+    m.stride == m.k || print(io, ", stride=", _maybetuple_string(m.stride))
+    print(io, ")")
 end
 
-function Flux.calc_padding(::Type{LpNormPool}, pad::Flux.SamePad, k::NTuple{N,T}, dilation, stride) where {N,T}
-    Flux.calc_padding(MeanPool, pad, k, dilation, stride)
-end
+# #########################################################################
+# struct LpNormPool{N,M}
+#     k::NTuple{N,Int}
+#     pad::NTuple{M,Int}
+#     stride::NTuple{N,Int}
+#     p::Real
+# end
 
-function _pool_size_check(layer, tup::Tuple, x::AbstractArray)
-    N = length(tup) + 2
-    ndims(x) == N || throw(DimensionMismatch(LazyString("layer ", layer,
-        " expects ndims(input) == ", N, ", but got ", summary(x))))
-end
+# function LpNormPool(k::NTuple{N,Integer}; pad=0, stride=k, p::Real=2) where {N}
+#     stride = Flux.expand(Val(N), stride)
+#     pad = Flux.calc_padding(LpNormPool, pad, k, 1, stride)
+#     return LpNormPool(k, pad, stride, p)
+# end
+
+# function (m::LpNormPool)(x)
+#     _pool_size_check(m, m.k, x)
+#     pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
+#     return NNlib.lpnormpool(x, pdims; p=m.p)
+# end
+
+# function Base.show(io::IO, m::LpNormPool)
+#     print(io, "LpNormPool(", m.k)
+#     all(==(0), m.pad) || print(io, ", pad=", Flux._maybetuple_string(m.pad))
+#     m.stride == m.k || print(io, ", stride=", Flux._maybetuple_string(m.stride))
+#     print(io, ", p=", m.p, ")")
+# end
+
+# function Flux.calc_padding(::Type{LpNormPool}, pad::Flux.SamePad, k::NTuple{N,T}, dilation, stride) where {N,T}
+#     Flux.calc_padding(MeanPool, pad, k, dilation, stride)
+# end
+
+# function _pool_size_check(layer, tup::Tuple, x::AbstractArray)
+#     N = length(tup) + 2
+#     ndims(x) == N || throw(DimensionMismatch(LazyString("layer ", layer,
+#         " expects ndims(input) == ", N, ", but got ", summary(x))))
+# end
 

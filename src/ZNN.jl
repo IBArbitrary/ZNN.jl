@@ -9,6 +9,10 @@ using Random,
     NNlib
 using Optimisers: @lazy, destructure, ofeltype
 using Flux: relu, sigmoid, softmax, elu, hardsigmoid, leakyrelu, selu, softplus, softsign
+using NNlib: insert_singleton_spatial_dimension,
+    output_size, input_size, channels_out, channels_in,
+    check_dims, calc_padding_regions, kernel_size,
+    padding, dilation, stride
 using LinearAlgebra: norm, rank, svd
 using StatsBase: mean
 
@@ -16,15 +20,20 @@ include("layers/basic.jl")
 export ComplexDense
 
 include("layers/conv.jl")
-export ComplexConv, ScalarMaxPool, LpNormPool
-export ComplexMeanPool
+export ComplexConv, ComplexMeanPool,
+    ScalarMaxPool, ComplexScalarMaxPool
+
 
 include("layers/conversion.jl")
 export complex_to_real_dense, complex_to_real_chain,
     real_to_complex_dense, real_to_complex_chain
 
+include("layers/pooling_direct.jl")
 include("layers/pooling.jl")
-export scalarmaxpool, scalarlpnormpool
+export scalarmaxpool, scalarmaxpool!
+    complexmixednormpool, complexmixednormpool!
+    ∇scalarmaxpool, ∇scalarmaxpool!
+    ∇complexmixednormpool, ∇complexmixednormpool!
 
 include("utils.jl")
 export complex_glorot_uniform,

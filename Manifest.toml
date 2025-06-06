@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "913901772088fdbbbf038c43e9dc6466d37f04f7"
+project_hash = "8f1f548b68fb9852859445782b354f41ed169163"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -454,6 +454,11 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "9cb23bbb1127eefb022b022481466c0f1127d430"
 uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.2"
+
+[[deps.Cassette]]
+git-tree-sha1 = "f8764df8d9d2aec2812f009a1ac39e46c33354b8"
+uuid = "7057c7e9-c182-5462-911a-8362d720325c"
+version = "0.3.14"
 
 [[deps.CatIndices]]
 deps = ["CustomUnitRanges", "OffsetArrays"]
@@ -3707,6 +3712,12 @@ weakdeps = ["Makie"]
 
     [deps.TimeseriesSurrogates.extensions]
     TimeseriesSurrogatesVisualizations = "Makie"
+
+[[deps.TraceFuns]]
+deps = ["Cassette"]
+git-tree-sha1 = "d8e026e2d98f790d64ef05854603d57b0d4cb9df"
+uuid = "626f57eb-f6ca-464c-8f04-384fee2a352e"
+version = "0.2.0"
 
 [[deps.Tracy]]
 deps = ["ExprTools", "LibTracyClient_jll", "Libdl"]
