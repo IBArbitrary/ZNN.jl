@@ -90,7 +90,7 @@ function (m::ComplexMeanPool)(x)
     T_complex = T <: Real ? Complex{T} : T
     x_complex = T_complex.(x)
     Flux._pool_size_check(m, m.k, x_complex)
-    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    pdims = PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
     return meanpool(x_complex, pdims)
 end
 
@@ -121,7 +121,7 @@ end
 
 function (m::ScalarMaxPool)(x)
     Flux._pool_size_check(m, m.k, x)
-    pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
+    pdims = PoolDims(x, m.k; padding=m.pad, stride=m.stride)
     return scalarmaxpool(x, pdims; f=m.f)
 end
 
@@ -153,7 +153,7 @@ function (m::ComplexScalarMaxPool)(x)
     T_complex = T <: Real ? Complex{T} : T
     x_complex = T_complex.(x)
     Flux._pool_size_check(m, m.k, x_complex)
-    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    pdims = PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
     return scalarmaxpool(x_complex, pdims; f=m.f)
 end
 
@@ -180,7 +180,7 @@ end
 
 function (m::LpNormPool)(x)
     Flux._pool_size_check(m, m.k, x)
-    pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
+    pdims = PoolDims(x, m.k; padding=m.pad, stride=m.stride)
     return NNlib.lpnormpool(x, pdims; p=m.p)
 end
 
@@ -213,7 +213,7 @@ function (m::ComplexMixedNormPool)(x)
     T_complex = T <: Real ? Complex{T} : T
     x_complex = T_complex.(x)
     Flux._pool_size_check(m, m.k, x_complex)
-    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    pdims = PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
     return complexmixednormpool(x_complex, pdims; p=m.p, q=m.q)
 end
 

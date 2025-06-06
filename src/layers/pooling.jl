@@ -172,9 +172,9 @@ For all elements `x` in a size `k` window, complexmixednormpool computes `(∑�
 Thus `complexmixednormpool(x, 1, 1, k) ./ prod(k) ≈ meanpool(x, k)` and `mixednormpool(x, 2, 2, k).^2 ./ prod(k) ≈ meanpool(x.^2, k)`.
 """
 function complexmixednormpool(x, p::Real, q::Real, k::NTuple{N, Integer}; pad = 0, stride = k) where {N}
-	pow1 = p isa Integer ? p : convert(float(eltype(x)), p)
+	pow1 = p isa Integer ? p : convert(float(real(eltype(x))), p)
 	(isinf(pow1) || pow1 < 0) && error("p value of Lpq norm pool expects `0 < p < Inf`, but p is $(pow1) now.")
-    pow2 = q isa Integer ? q : convert(float(eltype(x)), q)
+    pow2 = q isa Integer ? q : convert(float(real(eltype(x))), q)
 	(isinf(pow2) || pow2 < 0) && error("q value of Lpq norm pool expects `0 < q < Inf`, but q is $(pow2) now.")
 	pdims = PoolDims(x, k; padding = expand(Val(N), pad), stride = expand(Val(N), stride))
 	return complexmixednormpool(x, pdims; p = pow1, q = pow2)

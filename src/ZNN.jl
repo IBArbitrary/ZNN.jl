@@ -12,7 +12,7 @@ using Flux: relu, sigmoid, softmax, elu, hardsigmoid, leakyrelu, selu, softplus,
 using NNlib: insert_singleton_spatial_dimension,
     output_size, input_size, channels_out, channels_in,
     check_dims, calc_padding_regions, kernel_size,
-    padding, dilation, stride
+    padding, dilation, stride, PoolDims
 using LinearAlgebra: norm, rank, svd
 using StatsBase: mean
 
