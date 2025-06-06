@@ -21,7 +21,8 @@ export ComplexDense
 
 include("layers/conv.jl")
 export ComplexConv, ComplexMeanPool,
-    ScalarMaxPool, ComplexScalarMaxPool
+    ScalarMaxPool, ComplexScalarMaxPool,
+    LpNormPool, ComplexMixedNormPool
 
 
 include("layers/conversion.jl")
@@ -30,9 +31,9 @@ export complex_to_real_dense, complex_to_real_chain,
 
 include("layers/pooling_direct.jl")
 include("layers/pooling.jl")
-export scalarmaxpool, scalarmaxpool!
-    complexmixednormpool, complexmixednormpool!
-    ∇scalarmaxpool, ∇scalarmaxpool!
+export scalarmaxpool, scalarmaxpool!,
+    complexmixednormpool, complexmixednormpool!,
+    ∇scalarmaxpool, ∇scalarmaxpool!,
     ∇complexmixednormpool, ∇complexmixednormpool!
 
 include("utils.jl")

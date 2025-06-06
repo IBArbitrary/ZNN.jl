@@ -79,7 +79,13 @@ for name in (:scalarmax, :complexmixednorm)
 		else
 			error("Unimplemented codegen path")
 		end
-		m_init = T(0)
+		m_init = if $(name == :scalarmax)
+			T(0)
+		elseif $(name == :complexmixednorm)
+			T_real(0)
+		else
+			error("Unimplemented codegen path")
+		end
 
 		# Start with the central region
 		w_region, h_region, d_region = central_region
@@ -299,6 +305,7 @@ for name in (:scalarmax, :complexmixednorm)
 								if r != 0
 									da = y_idx^(1-p)*(a^q + b^q)^(p/q - 1)*(a^(q-1))*sign(a_)
 									db = y_idx^(1-p)*(a^q + b^q)^(p/q - 1)*(b^(q-1))*sign(b_)
+									da, db = real(da), real(db)
 								else
 									da, db = 0, 0
 								end
@@ -350,7 +357,7 @@ for name in (:scalarmax, :complexmixednorm)
 
 										# Same as above
 										# x_idxs = (input_kw, input_kh, input_kd, c, batch_idx)
-										if $(name == :max)
+										if $(name == :scalarmax)
 											if maxpool_already_chose
 												break
 											end
@@ -370,6 +377,7 @@ for name in (:scalarmax, :complexmixednorm)
 											if r != 0
 												da = y_idx^(1-p)*(a^q + b^q)^(p/q - 1)*(a^(q-1))*sign(a_)
 												db = y_idx^(1-p)*(a^q + b^q)^(p/q - 1)*(b^(q-1))*sign(b_)
+												da, db = real(da), real(db)
 											else
 												da, db = 0, 0
 											end

@@ -165,39 +165,62 @@ function Base.show(io::IO, m::ComplexScalarMaxPool)
 end
 
 # #########################################################################
-# struct LpNormPool{N,M}
-#     k::NTuple{N,Int}
-#     pad::NTuple{M,Int}
-#     stride::NTuple{N,Int}
-#     p::Real
-# end
+struct LpNormPool{N,M}
+    k::NTuple{N,Int}
+    pad::NTuple{M,Int}
+    stride::NTuple{N,Int}
+    p::Real
+end
 
-# function LpNormPool(k::NTuple{N,Integer}; pad=0, stride=k, p::Real=2) where {N}
-#     stride = Flux.expand(Val(N), stride)
-#     pad = Flux.calc_padding(LpNormPool, pad, k, 1, stride)
-#     return LpNormPool(k, pad, stride, p)
-# end
+function LpNormPool(k::NTuple{N,Integer}, p::Real=2; pad=0, stride=k) where {N}
+    stride = Flux.expand(Val(N), stride)
+    pad = Flux.calc_padding(LpNormPool, pad, k, 1, stride)
+    return LpNormPool(k, pad, stride, p)
+end
 
-# function (m::LpNormPool)(x)
-#     _pool_size_check(m, m.k, x)
-#     pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
-#     return NNlib.lpnormpool(x, pdims; p=m.p)
-# end
+function (m::LpNormPool)(x)
+    Flux._pool_size_check(m, m.k, x)
+    pdims = NNlib.PoolDims(x, m.k; padding=m.pad, stride=m.stride)
+    return NNlib.lpnormpool(x, pdims; p=m.p)
+end
 
-# function Base.show(io::IO, m::LpNormPool)
-#     print(io, "LpNormPool(", m.k)
-#     all(==(0), m.pad) || print(io, ", pad=", Flux._maybetuple_string(m.pad))
-#     m.stride == m.k || print(io, ", stride=", Flux._maybetuple_string(m.stride))
-#     print(io, ", p=", m.p, ")")
-# end
+function Base.show(io::IO, m::LpNormPool)
+    print(io, "LpNormPool(", m.k)
+    all(==(0), m.pad) || print(io, ", pad=", Flux._maybetuple_string(m.pad))
+    m.stride == m.k || print(io, ", stride=", Flux._maybetuple_string(m.stride))
+    print(io, ", p=", m.p, ")")
+end
 
-# function Flux.calc_padding(::Type{LpNormPool}, pad::Flux.SamePad, k::NTuple{N,T}, dilation, stride) where {N,T}
-#     Flux.calc_padding(MeanPool, pad, k, dilation, stride)
-# end
+###############################################################################3
+struct ComplexMixedNormPool{N,M}
+    k::NTuple{N,Int}
+    pad::NTuple{M,Int}
+    stride::NTuple{N,Int}
+    p::Real
+    q::Real
+end
 
-# function _pool_size_check(layer, tup::Tuple, x::AbstractArray)
-#     N = length(tup) + 2
-#     ndims(x) == N || throw(DimensionMismatch(LazyString("layer ", layer,
-#         " expects ndims(input) == ", N, ", but got ", summary(x))))
-# end
+function ComplexMixedNormPool(
+    k::NTuple{N,Integer}, p::Real=2, q::Real=2; pad=0, stride=k
+    ) where {N}
+    stride = Flux.expand(Val(N), stride)
+    pad = Flux.calc_padding(ComplexMixedNormPool, pad, k, 1, stride)
+    return ComplexMixedNormPool(k, pad, stride, p, q)
+end
 
+function (m::ComplexMixedNormPool)(x)
+    T = eltype(x)
+    T_complex = T <: Real ? Complex{T} : T
+    x_complex = T_complex.(x)
+    Flux._pool_size_check(m, m.k, x_complex)
+    pdims = NNlib.PoolDims(x_complex, m.k; padding=m.pad, stride=m.stride)
+    return complexmixednormpool(x_complex, pdims; p=m.p, q=m.q)
+end
+
+function Base.show(io::IO, m::ComplexMixedNormPool)
+    print(io, "ComplexMixedNormPool(", m.k)
+    all(==(0), m.pad) || print(io, ", pad=", Flux._maybetuple_string(m.pad))
+    m.stride == m.k || print(io, ", stride=", Flux._maybetuple_string(m.stride))
+    print(io, ", p=", m.p, ")")
+    print(io, ", q=", m.q, ")")
+end

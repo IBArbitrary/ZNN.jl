@@ -184,7 +184,7 @@ end
 for pool in [:scalarmaxpool, :complexmixednormpool]
 	∇pool = Symbol(:∇, pool)
 	pullback = Symbol(pool, :_pullback)
-	@eval function rrule(::typeof($pool), x, pdims::PoolDims; kw...)
+	@eval function ChainRulesCore.rrule(::typeof($pool), x, pdims::PoolDims; kw...)
 		Ω = $pool(x, pdims; kw...)
 		$pullback(Δ) = (NoTangent(), $∇pool(unthunk(Δ), Ω, x, pdims; kw...), NoTangent())
 		return Ω, $pullback
